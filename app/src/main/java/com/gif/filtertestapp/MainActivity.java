@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
         // Initialisiere das GenerativeModel
         generativeModel = new GenerativeModel(
                 "gemini-1.5-flash", // Modell-Name
-                "DEIN_API_SCHLUESSEL" // WICHTIG: Ersetze dies durch deinen API-Schlüssel
+                BuildConfig.GEMINI_API_KEY
         );
 
         setupButtonListeners();

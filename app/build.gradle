@@ -1,15 +1,13 @@
+
+
+plugins {
+    alias(libs.plugins.android.application)
+}
 Properties properties = new Properties()
 if (rootProject.file("local.properties").exists()) {
     properties.load(rootProject.file("local.properties").newDataInputStream())
 }
 
-plugins {
-    alias(libs.plugins.android.application)
-}
-
-plugins {
-    alias(libs.plugins.android.application)
-}
 
 
 android {
