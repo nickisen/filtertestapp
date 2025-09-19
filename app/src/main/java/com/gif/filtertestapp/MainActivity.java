@@ -8,6 +8,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -62,7 +63,7 @@ public class MainActivity extends AppCompatActivity {
         // Initialisiere das GenerativeModel
         generativeModel = new GenerativeModel(
                 "gemini-1.5-flash", // Modell-Name
-                BuildConfig.GEMINI_API_KEY
+                BuildConfig.GEMINI_API_KEY // API-Schlüssel aus BuildConfig lesen
         );
 
         setupButtonListeners();
@@ -116,6 +117,30 @@ public class MainActivity extends AppCompatActivity {
         GRAYSCALE, SEPIA, INVERT, VINTAGE, BRIGHTNESS, CONTRAST, WINTER,
         SOLARIZE, POSTERIZE, VIGNETTE, HEATMAP, SHARPEN
     }
+
+    private void showLoading(boolean isLoading) {
+        binding.progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+
+        // Deaktiviere alle wichtigen Bedienelemente während des Ladens
+        binding.btnSelectImage.setEnabled(!isLoading);
+        binding.etCustomFilter.setEnabled(!isLoading);
+        binding.btnApplyCustomFilter.setEnabled(!isLoading);
+
+        // Deaktiviere alle Buttons in der ScrollView
+        for (int i = 0; i < binding.filterButtonsLayout.getChildCount(); i++) {
+            View child = binding.filterButtonsLayout.getChildAt(i);
+            child.setEnabled(!isLoading);
+        }
+
+        // Der Speicher-Button sollte nur aktivierbar sein, wenn nicht geladen wird
+        // und ein gefiltertes Bild existiert.
+        if (!isLoading) {
+            binding.btnSave.setEnabled(filteredBitmap != null);
+        } else {
+            binding.btnSave.setEnabled(false);
+        }
+    }
+
 
     private void applyFilter(FilterType filterType) {
         if (originalBitmap == null) {
@@ -172,6 +197,8 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
+        showLoading(true); // Lade-UI anzeigen
+
         String prompt = "Erstelle eine ColorMatrix für einen Android-Bildfilter basierend auf dieser Beschreibung: '" + text + "'. Gib nur die 20 Float-Werte der Matrix als kommagetrennten String zurück, ohne weiteren Text oder Markdown-Formatierung. Beispiel: 1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0";
 
         GenerativeModelFutures modelFutures = GenerativeModelFutures.from(generativeModel);
@@ -186,14 +213,17 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     filteredBitmap = FilterUtils.applyCustomFilter(originalBitmap, colorMatrixString);
                     binding.imageViewPreview.setImageBitmap(filteredBitmap);
-                    binding.btnSave.setEnabled(true);
+                    showLoading(false); // Lade-UI ausblenden
                 });
             }
 
             @Override
             public void onFailure(Throwable t) {
                 Log.e(TAG, "Fehler bei der Filtererstellung", t);
-                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Filter konnte nicht erstellt werden.", Toast.LENGTH_SHORT).show());
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Filter konnte nicht erstellt werden.", Toast.LENGTH_SHORT).show();
+                    showLoading(false); // Lade-UI auch bei Fehlern ausblenden
+                });
             }
         }, executor);
     }
