@@ -20,6 +20,7 @@ import com.google.ai.client.generativeai.GenerativeModel;
 import com.google.ai.client.generativeai.java.GenerativeModelFutures;
 import com.google.ai.client.generativeai.type.Content;
 import com.google.ai.client.generativeai.type.GenerateContentResponse;
+import com.google.ai.client.generativeai.type.ImagePart;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
@@ -28,6 +29,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Collections;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -37,7 +39,11 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private Bitmap originalBitmap;
     private Bitmap filteredBitmap;
-    private GenerativeModel generativeModel;
+
+    // NEU: Separates Modell für die Bildbearbeitung
+    private GenerativeModel generativeModelImage;
+    private GenerativeModel generativeModelText;
+
 
     private final ActivityResultLauncher<String> pickImageLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -60,10 +66,16 @@ public class MainActivity extends AppCompatActivity {
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        // Initialisiere das GenerativeModel
-        generativeModel = new GenerativeModel(
-                "gemini-1.5-flash", // Modell-Name
-                BuildConfig.GEMINI_API_KEY // API-Schlüssel aus BuildConfig lesen
+        // Initialisiere das Text-Modell für die Farb-Filter
+        generativeModelText = new GenerativeModel(
+                "gemini-1.5-flash",
+                BuildConfig.GEMINI_API_KEY
+        );
+
+        // NEU: Initialisiere das Bild-Modell ("Nano Banana")
+        generativeModelImage = new GenerativeModel(
+                "gemini-2.5-flash-image-preview", // Offizieller Modellname
+                BuildConfig.GEMINI_API_KEY
         );
 
         setupButtonListeners();
@@ -94,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
         binding.btnHeatmap.setOnClickListener(v -> applyFilter(FilterType.HEATMAP));
         binding.btnSharpen.setOnClickListener(v -> applyFilter(FilterType.SHARPEN));
 
-        // Custom filter listener
+
         binding.btnApplyCustomFilter.setOnClickListener(v -> {
             String filterText = binding.etCustomFilter.getText().toString();
             if (!filterText.isEmpty()) {
@@ -103,6 +115,21 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "Bitte gib eine Filterbeschreibung ein.", Toast.LENGTH_SHORT).show();
             }
         });
+
+        // NEU: Listener für den AI-Photoshop-Button
+        binding.btnApplyAiPhotoshop.setOnClickListener(v -> {
+            String promptText = binding.etAiPhotoshop.getText().toString();
+            if (originalBitmap == null) {
+                Toast.makeText(this, "Bitte wähle zuerst ein Bild aus.", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if (!promptText.isEmpty()) {
+                applyAiPhotoshop(promptText, originalBitmap);
+            } else {
+                Toast.makeText(this, "Bitte gib eine Beschreibung für die Bildänderung ein.", Toast.LENGTH_SHORT).show();
+            }
+        });
+
 
         binding.btnSave.setOnClickListener(v -> {
             if (filteredBitmap != null) {
@@ -125,6 +152,10 @@ public class MainActivity extends AppCompatActivity {
         binding.btnSelectImage.setEnabled(!isLoading);
         binding.etCustomFilter.setEnabled(!isLoading);
         binding.btnApplyCustomFilter.setEnabled(!isLoading);
+        // NEU: Auch die neuen UI-Elemente de-/aktivieren
+        binding.etAiPhotoshop.setEnabled(!isLoading);
+        binding.btnApplyAiPhotoshop.setEnabled(!isLoading);
+
 
         // Deaktiviere alle Buttons in der ScrollView
         for (int i = 0; i < binding.filterButtonsLayout.getChildCount(); i++) {
@@ -132,8 +163,6 @@ public class MainActivity extends AppCompatActivity {
             child.setEnabled(!isLoading);
         }
 
-        // Der Speicher-Button sollte nur aktivierbar sein, wenn nicht geladen wird
-        // und ein gefiltertes Bild existiert.
         if (!isLoading) {
             binding.btnSave.setEnabled(filteredBitmap != null);
         } else {
@@ -197,11 +226,11 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
 
-        showLoading(true); // Lade-UI anzeigen
+        showLoading(true);
 
         String prompt = "Erstelle eine ColorMatrix für einen Android-Bildfilter basierend auf dieser Beschreibung: '" + text + "'. Gib nur die 20 Float-Werte der Matrix als kommagetrennten String zurück, ohne weiteren Text oder Markdown-Formatierung. Beispiel: 1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0";
 
-        GenerativeModelFutures modelFutures = GenerativeModelFutures.from(generativeModel);
+        GenerativeModelFutures modelFutures = GenerativeModelFutures.from(generativeModelText);
         Content content = new Content.Builder().addText(prompt).build();
         Executor executor = Executors.newSingleThreadExecutor();
 
@@ -213,7 +242,8 @@ public class MainActivity extends AppCompatActivity {
                 runOnUiThread(() -> {
                     filteredBitmap = FilterUtils.applyCustomFilter(originalBitmap, colorMatrixString);
                     binding.imageViewPreview.setImageBitmap(filteredBitmap);
-                    showLoading(false); // Lade-UI ausblenden
+                    binding.btnSave.setEnabled(true);
+                    showLoading(false);
                 });
             }
 
@@ -222,7 +252,54 @@ public class MainActivity extends AppCompatActivity {
                 Log.e(TAG, "Fehler bei der Filtererstellung", t);
                 runOnUiThread(() -> {
                     Toast.makeText(MainActivity.this, "Filter konnte nicht erstellt werden.", Toast.LENGTH_SHORT).show();
-                    showLoading(false); // Lade-UI auch bei Fehlern ausblenden
+                    showLoading(false);
+                });
+            }
+        }, executor);
+    }
+
+    // NEU: Methode für das "AI Photoshop" Feature
+    private void applyAiPhotoshop(String promptText, Bitmap image) {
+        showLoading(true);
+
+        GenerativeModelFutures modelFutures = GenerativeModelFutures.from(generativeModelImage);
+
+        // Erstelle den Content, der sowohl Text als auch das Bild enthält
+        Content content = new Content.Builder()
+                .addText(promptText)
+                .addImage(image)
+                .build();
+
+        Executor executor = Executors.newSingleThreadExecutor();
+        ListenableFuture<GenerateContentResponse> response = modelFutures.generateContent(content);
+
+        Futures.addCallback(response, new FutureCallback<GenerateContentResponse>() {
+            @Override
+            public void onSuccess(GenerateContentResponse result) {
+                // Das Ergebnis-Bild aus der Antwort extrahieren
+                filteredBitmap = result.getCandidates().get(0).getContent().getParts().stream()
+                        .filter(part -> part instanceof ImagePart)
+                        .map(part -> ((ImagePart) part).getImage())
+                        .findFirst()
+                        .orElse(null);
+
+                runOnUiThread(() -> {
+                    if (filteredBitmap != null) {
+                        binding.imageViewPreview.setImageBitmap(filteredBitmap);
+                        binding.btnSave.setEnabled(true);
+                    } else {
+                        Toast.makeText(MainActivity.this, "Bild konnte nicht bearbeitet werden.", Toast.LENGTH_SHORT).show();
+                    }
+                    showLoading(false);
+                });
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                Log.e(TAG, "Fehler bei der Bildbearbeitung", t);
+                runOnUiThread(() -> {
+                    Toast.makeText(MainActivity.this, "Bildbearbeitung fehlgeschlagen.", Toast.LENGTH_SHORT).show();
+                    showLoading(false);
                 });
             }
         }, executor);

@@ -37,10 +37,10 @@
         android:layout_height="wrap_content"
         android:layout_marginEnd="8dp"
         android:hint="z.B. Los Angeles 2016 vintage vibe"
-        app:layout_constraintBottom_toTopOf="@id/filterScrollView"
+        app:layout_constraintBottom_toTopOf="@id/etAiPhotoshop"
         app:layout_constraintEnd_toStartOf="@+id/btnApplyCustomFilter"
         app:layout_constraintStart_toStartOf="parent"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="8dp"
         android:autofillHints="none"
         android:inputType="text" />
 
@@ -48,10 +48,33 @@
         android:id="@+id/btnApplyCustomFilter"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Anwenden"
+        android:text="Filter"
         app:layout_constraintBottom_toBottomOf="@id/etCustomFilter"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="@id/etCustomFilter" />
+
+    <EditText
+        android:id="@+id/etAiPhotoshop"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:hint="z.B. Ein Hai tanzt im Hintergrund"
+        app:layout_constraintBottom_toTopOf="@id/filterScrollView"
+        app:layout_constraintEnd_toStartOf="@+id/btnApplyAiPhotoshop"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginBottom="16dp"
+        android:autofillHints="none"
+        android:inputType="text" />
+
+    <Button
+        android:id="@+id/btnApplyAiPhotoshop"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Anwenden"
+        app:layout_constraintBottom_toBottomOf="@id/etAiPhotoshop"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/etAiPhotoshop" />
+
 
     <HorizontalScrollView
         android:id="@+id/filterScrollView"
