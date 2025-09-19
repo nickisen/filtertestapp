@@ -104,6 +104,41 @@
                 android:layout_height="wrap_content"
                 android:text="Winter" />
 
+            <Button
+                android:id="@+id/btnSolarize"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Solarize" />
+
+            <Button
+                android:id="@+id/btnPosterize"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Posterize" />
+
+            <Button
+                android:id="@+id/btnVignette"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Vignette" />
+
+            <Button
+                android:id="@+id/btnHeatmap"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Heatmap" />
+
+            <Button
+                android:id="@+id/btnSharpen"
+                style="?android:attr/buttonBarButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sharpen" />
+
         </LinearLayout>
     </HorizontalScrollView>
 

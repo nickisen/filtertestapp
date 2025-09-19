@@ -24,23 +24,16 @@ import java.io.OutputStream;
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
-
-    // View Binding to access UI elements safely
     private ActivityMainBinding binding;
-
-    // Bitmaps to hold the original and filtered images
     private Bitmap originalBitmap;
     private Bitmap filteredBitmap;
 
-    // Modern way to handle activity results (e.g., picking an image)
     private final ActivityResultLauncher<String> pickImageLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
                 if (uri != null) {
                     try {
-                        // Load and downsample the image to prevent OutOfMemoryError
                         originalBitmap = loadBitmapFromUri(uri);
                         binding.imageViewPreview.setImageBitmap(originalBitmap);
-                        // Reset filtered bitmap and disable save button when new image is selected
                         filteredBitmap = null;
                         binding.btnSave.setEnabled(false);
                     } catch (FileNotFoundException e) {
@@ -55,14 +48,12 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
-
         setupButtonListeners();
     }
 
     private void setupButtonListeners() {
         binding.btnSelectImage.setOnClickListener(v -> pickImageLauncher.launch("image/*"));
 
-        // Revert to original image
         binding.btnRemoveFilter.setOnClickListener(v -> {
             if (originalBitmap != null) {
                 binding.imageViewPreview.setImageBitmap(originalBitmap);
@@ -79,6 +70,11 @@ public class MainActivity extends AppCompatActivity {
         binding.btnBrightness.setOnClickListener(v -> applyFilter(FilterType.BRIGHTNESS));
         binding.btnContrast.setOnClickListener(v -> applyFilter(FilterType.CONTRAST));
         binding.btnWinter.setOnClickListener(v -> applyFilter(FilterType.WINTER));
+        binding.btnSolarize.setOnClickListener(v -> applyFilter(FilterType.SOLARIZE));
+        binding.btnPosterize.setOnClickListener(v -> applyFilter(FilterType.POSTERIZE));
+        binding.btnVignette.setOnClickListener(v -> applyFilter(FilterType.VIGNETTE));
+        binding.btnHeatmap.setOnClickListener(v -> applyFilter(FilterType.HEATMAP));
+        binding.btnSharpen.setOnClickListener(v -> applyFilter(FilterType.SHARPEN));
 
         binding.btnSave.setOnClickListener(v -> {
             if (filteredBitmap != null) {
@@ -89,12 +85,11 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Enum to manage different filter types
     private enum FilterType {
-        GRAYSCALE, SEPIA, INVERT, VINTAGE, BRIGHTNESS, CONTRAST, WINTER
+        GRAYSCALE, SEPIA, INVERT, VINTAGE, BRIGHTNESS, CONTRAST, WINTER,
+        SOLARIZE, POSTERIZE, VIGNETTE, HEATMAP, SHARPEN
     }
 
-    // Helper method to apply filters and reduce code repetition
     private void applyFilter(FilterType filterType) {
         if (originalBitmap == null) {
             Toast.makeText(this, "Please select an image first.", Toast.LENGTH_SHORT).show();
@@ -123,22 +118,29 @@ public class MainActivity extends AppCompatActivity {
             case WINTER:
                 filteredBitmap = FilterUtils.applyWinter(originalBitmap);
                 break;
+            case SOLARIZE:
+                filteredBitmap = FilterUtils.applySolarize(originalBitmap);
+                break;
+            case POSTERIZE:
+                filteredBitmap = FilterUtils.applyPosterize(originalBitmap);
+                break;
+            case VIGNETTE:
+                filteredBitmap = FilterUtils.applyVignette(originalBitmap);
+                break;
+            case HEATMAP:
+                filteredBitmap = FilterUtils.applyHeatmap(originalBitmap);
+                break;
+            case SHARPEN:
+                filteredBitmap = FilterUtils.applySharpen(originalBitmap);
+                break;
         }
 
         binding.imageViewPreview.setImageBitmap(filteredBitmap);
         binding.btnSave.setEnabled(true);
     }
 
-    /**
-     * Loads a bitmap from a Uri, downsampling it to prevent OutOfMemoryErrors.
-     *
-     * @param uri The Uri of the image to load.
-     * @return The loaded and downsampled bitmap.
-     * @throws FileNotFoundException If the Uri cannot be opened.
-     */
     private Bitmap loadBitmapFromUri(Uri uri) throws FileNotFoundException {
         InputStream inputStream = getContentResolver().openInputStream(uri);
-        // Options to check image dimensions without loading it into memory
         BitmapFactory.Options options = new BitmapFactory.Options();
         options.inJustDecodeBounds = true;
         BitmapFactory.decodeStream(inputStream, null, options);
@@ -148,10 +150,8 @@ public class MainActivity extends AppCompatActivity {
             e.printStackTrace();
         }
 
-        // Calculate inSampleSize to downscale the image
         options.inSampleSize = calculateInSampleSize(options, 800, 800);
 
-        // Decode bitmap with inSampleSize set
         options.inJustDecodeBounds = false;
         inputStream = getContentResolver().openInputStream(uri);
         Bitmap bitmap = BitmapFactory.decodeStream(inputStream, null, options);
@@ -178,24 +178,15 @@ public class MainActivity extends AppCompatActivity {
         return inSampleSize;
     }
 
-    /**
-     * Saves a bitmap to the device's public gallery.
-     * Uses MediaStore, which is the recommended way to save shared media.
-     *
-     * @param bitmap The bitmap to save.
-     */
     private void saveImageToGallery(Bitmap bitmap) {
         String fileName = "FilteredImage_" + System.currentTimeMillis() + ".jpg";
-
         ContentValues values = new ContentValues();
         values.put(MediaStore.Images.Media.DISPLAY_NAME, fileName);
         values.put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             values.put(MediaStore.Images.Media.RELATIVE_PATH, "Pictures/FilterTestApp");
         }
-
         Uri uri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
-
         if (uri != null) {
             try (OutputStream outputStream = getContentResolver().openOutputStream(uri)) {
                 if (outputStream != null) {
