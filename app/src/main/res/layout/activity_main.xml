@@ -25,11 +25,31 @@
         android:background="#E0E0E0"
         android:contentDescription="Image Preview"
         android:scaleType="fitCenter"
-        app:layout_constraintBottom_toTopOf="@id/filterScrollView"
+        app:layout_constraintBottom_toTopOf="@id/etCustomFilter"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/btnSelectImage"
         tools:srcCompat="@tools:sample/avatars" />
+
+    <EditText
+        android:id="@+id/etCustomFilter"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="8dp"
+        android:hint="z.B. Los Angeles 2016 vintage vibe"
+        app:layout_constraintBottom_toTopOf="@id/filterScrollView"
+        app:layout_constraintEnd_toStartOf="@+id/btnApplyCustomFilter"
+        app:layout_constraintStart_toStartOf="parent"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/btnApplyCustomFilter"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Anwenden"
+        app:layout_constraintBottom_toBottomOf="@id/etCustomFilter"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/etCustomFilter" />
 
     <HorizontalScrollView
         android:id="@+id/filterScrollView"

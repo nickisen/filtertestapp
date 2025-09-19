@@ -10,6 +10,7 @@ import android.graphics.PorterDuff;
 import android.graphics.PorterDuffXfermode;
 import android.graphics.RadialGradient;
 import android.graphics.Shader;
+import android.util.Log;
 
 public class FilterUtils {
 
@@ -263,6 +264,37 @@ public class FilterUtils {
             }
         }
         resultBitmap.setPixels(dstPixels, 0, width, 0, 0, width, height);
+        return resultBitmap;
+    }
+
+    /**
+     * Applies a custom filter from a color matrix string.
+     */
+    public static Bitmap applyCustomFilter(Bitmap sourceBitmap, String colorMatrixString) {
+        Bitmap resultBitmap = Bitmap.createBitmap(sourceBitmap.getWidth(), sourceBitmap.getHeight(), sourceBitmap.getConfig());
+        Canvas canvas = new Canvas(resultBitmap);
+        Paint paint = new Paint();
+
+        try {
+            String[] values = colorMatrixString.replaceAll("\\[|\\]", "").split(",");
+            if (values.length != 20) {
+                Log.e("FilterUtils", "Invalid color matrix string: " + colorMatrixString);
+                return sourceBitmap; // Return original if matrix is invalid
+            }
+
+            float[] matrixValues = new float[20];
+            for (int i = 0; i < 20; i++) {
+                matrixValues[i] = Float.parseFloat(values[i].trim());
+            }
+
+            ColorMatrix colorMatrix = new ColorMatrix(matrixValues);
+            paint.setColorFilter(new ColorMatrixColorFilter(colorMatrix));
+            canvas.drawBitmap(sourceBitmap, 0, 0, paint);
+        } catch (NumberFormatException e) {
+            Log.e("FilterUtils", "Error parsing color matrix string", e);
+            return sourceBitmap; // Return original on parsing error
+        }
+
         return resultBitmap;
     }
 }

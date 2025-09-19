@@ -15,11 +15,20 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.gif.filtertestapp.databinding.ActivityMainBinding;
+import com.google.ai.client.generativeai.GenerativeModel;
+import com.google.ai.client.generativeai.java.GenerativeModelFutures;
+import com.google.ai.client.generativeai.type.Content;
+import com.google.ai.client.generativeai.type.GenerateContentResponse;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -27,6 +36,7 @@ public class MainActivity extends AppCompatActivity {
     private ActivityMainBinding binding;
     private Bitmap originalBitmap;
     private Bitmap filteredBitmap;
+    private GenerativeModel generativeModel;
 
     private final ActivityResultLauncher<String> pickImageLauncher =
             registerForActivityResult(new ActivityResultContracts.GetContent(), uri -> {
@@ -48,6 +58,13 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+
+        // Initialisiere das GenerativeModel
+        generativeModel = new GenerativeModel(
+                "gemini-1.5-flash", // Modell-Name
+                "DEIN_API_SCHLUESSEL" // WICHTIG: Ersetze dies durch deinen API-Schlüssel
+        );
+
         setupButtonListeners();
     }
 
@@ -75,6 +92,16 @@ public class MainActivity extends AppCompatActivity {
         binding.btnVignette.setOnClickListener(v -> applyFilter(FilterType.VIGNETTE));
         binding.btnHeatmap.setOnClickListener(v -> applyFilter(FilterType.HEATMAP));
         binding.btnSharpen.setOnClickListener(v -> applyFilter(FilterType.SHARPEN));
+
+        // Custom filter listener
+        binding.btnApplyCustomFilter.setOnClickListener(v -> {
+            String filterText = binding.etCustomFilter.getText().toString();
+            if (!filterText.isEmpty()) {
+                applyCustomFilter(filterText);
+            } else {
+                Toast.makeText(this, "Bitte gib eine Filterbeschreibung ein.", Toast.LENGTH_SHORT).show();
+            }
+        });
 
         binding.btnSave.setOnClickListener(v -> {
             if (filteredBitmap != null) {
@@ -138,6 +165,39 @@ public class MainActivity extends AppCompatActivity {
         binding.imageViewPreview.setImageBitmap(filteredBitmap);
         binding.btnSave.setEnabled(true);
     }
+
+    private void applyCustomFilter(String text) {
+        if (originalBitmap == null) {
+            Toast.makeText(this, "Bitte wähle zuerst ein Bild aus.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String prompt = "Erstelle eine ColorMatrix für einen Android-Bildfilter basierend auf dieser Beschreibung: '" + text + "'. Gib nur die 20 Float-Werte der Matrix als kommagetrennten String zurück, ohne weiteren Text oder Markdown-Formatierung. Beispiel: 1,0,0,0,0,0,1,0,0,0,0,0,1,0,0,0,0,0,1,0";
+
+        GenerativeModelFutures modelFutures = GenerativeModelFutures.from(generativeModel);
+        Content content = new Content.Builder().addText(prompt).build();
+        Executor executor = Executors.newSingleThreadExecutor();
+
+        ListenableFuture<GenerateContentResponse> response = modelFutures.generateContent(content);
+        Futures.addCallback(response, new FutureCallback<GenerateContentResponse>() {
+            @Override
+            public void onSuccess(GenerateContentResponse result) {
+                String colorMatrixString = result.getText();
+                runOnUiThread(() -> {
+                    filteredBitmap = FilterUtils.applyCustomFilter(originalBitmap, colorMatrixString);
+                    binding.imageViewPreview.setImageBitmap(filteredBitmap);
+                    binding.btnSave.setEnabled(true);
+                });
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                Log.e(TAG, "Fehler bei der Filtererstellung", t);
+                runOnUiThread(() -> Toast.makeText(MainActivity.this, "Filter konnte nicht erstellt werden.", Toast.LENGTH_SHORT).show());
+            }
+        }, executor);
+    }
+
 
     private Bitmap loadBitmapFromUri(Uri uri) throws FileNotFoundException {
         InputStream inputStream = getContentResolver().openInputStream(uri);

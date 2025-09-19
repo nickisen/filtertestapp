@@ -1,6 +1,16 @@
+Properties properties = new Properties()
+if (rootProject.file("local.properties").exists()) {
+    properties.load(rootProject.file("local.properties").newDataInputStream())
+}
+
 plugins {
     alias(libs.plugins.android.application)
 }
+
+plugins {
+    alias(libs.plugins.android.application)
+}
+
 
 android {
     namespace 'com.gif.filtertestapp'
@@ -14,6 +24,9 @@ android {
         versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
+        // Füge diese Zeile hinzu, um den API-Schlüssel zu lesen
+        buildConfigField "String", "GEMINI_API_KEY", properties.getProperty('GEMINI_API_KEY', '"api_key_not_found"')
     }
 
     buildTypes {
@@ -29,6 +42,7 @@ android {
     buildFeatures {
         viewBinding true
     }
+
 }
 
 dependencies {
@@ -40,4 +54,5 @@ dependencies {
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
+    implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
 }
