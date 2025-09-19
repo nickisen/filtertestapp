@@ -39,6 +39,7 @@ android {
     }
     buildFeatures {
         viewBinding true
+        buildConfig = true
     }
 
 }
@@ -49,8 +50,13 @@ dependencies {
     implementation libs.material
     implementation libs.activity
     implementation libs.constraintlayout
+    implementation libs.generativeai
+    implementation libs.guava
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
     implementation("com.google.ai.client.generativeai:generativeai:0.6.0")
+
+    implementation("com.google.guava:guava:33.5.0-android") // Or a more recent compatible version
+
 }
